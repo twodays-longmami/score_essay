@@ -121,7 +121,7 @@ textarea:focus{outline:none;border-color:var(--blue);}
 <div class="toast" id="toast"></div>
 
 <script>
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbws7qy7SU_T6Osfsa2EeagQ-beHU4hoZkASQuOjq0s010Bk04DbL4TUEQmdyxYkI5ZJZQ/exec';
+var GAS_URL = localStorage.getItem('gasUrl') || 'https://script.google.com/macros/s/AKfycbyfaYPdOy1JsTVxcliF5slRXnQwc46PWVwzkkAL5hmtkUZxeAqP7250TMJWlNku4vrIFg/exec';
 var currentTab = 'board';
 var members = [];
 var todayEntries = [];
