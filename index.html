@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>인증 시스템</title>
+<style>
+  :root {
+    --bg: #f5f5f3;
+    --surface: #ffffff;
+    --surface2: #f0efeb;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text2: #6b6b67;
+    --text3: #a0a09c;
+    --blue: #185FA5;
+    --blue-bg: #E6F1FB;
+    --blue-text: #0C447C;
+    --green: #1D9E75;
+    --green-bg: #E1F5EE;
+    --green-text: #085041;
+    --amber: #BA7517;
+    --amber-bg: #FAEEDA;
+    --red: #A32D2D;
+    --red-bg: #FCEBEB;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a;
+      --surface: #252523;
+      --surface2: #2e2e2c;
+      --border: rgba(255,255,255,0.1);
+      --border2: rgba(255,255,255,0.18);
+      --text: #f0efe9;
+      --text2: #9e9e98;
+      --text3: #6b6b67;
+      --blue-bg: #0c2d4a;
+      --blue-text: #85B7EB;
+      --green-bg: #04231a;
+      --green-text: #5DCAA5;
+      --amber-bg: #3a2500;
+      --red-bg: #2e1010;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Noto Sans KR', BlinkMacSystemFont, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh; }
+  .app { max-width: 640px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+  .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+  .top-bar h1 { font-size: 20px; font-weight: 600; }
+  .date-badge { font-size: 13px; color: var(--text2); background: var(--surface2);
+    padding: 5px 12px; border-radius: 20px; border: 0.5px solid var(--border); }
+  .tabs { display: flex; gap: 4px; background: var(--surface2); border-radius: var(--radius-sm);
+    padding: 3px; margin-bottom: 1.25rem; border: 0.5px solid var(--border); }
+  .tab { flex: 1; padding: 8px 4px; font-size: 13px; font-weight: 500; border: none;
+    background: transparent; color: var(--text2); border-radius: 6px; cursor: pointer;
+    transition: all 0.15s; font-family: inherit; }
+  .tab.active { background: var(--surface); color: var(--text);
+    border: 0.5px solid var(--border2); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+  /* 카드 */
+  .card { background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 12px; }
+  .card-title { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 12px;
+    text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* 요약 그리드 */
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .metric { background: var(--surface2); border-radius: var(--radius-sm); padding: 0.75rem 1rem; }
+  .metric-label { font-size: 11px; color: var(--text2); margin-bottom: 3px; }
+  .metric-value { font-size: 24px; font-weight: 600; }
+
+  /* 멤버 행 */
+  .member-row { display: flex; align-items: center; gap: 10px; padding: 10px 0;
+    border-bottom: 0.5px solid var(--border); }
+  .member-row:last-child { border-bottom: none; }
+  .rank-num { font-size: 13px; font-weight: 600; color: var(--text3); min-width: 22px; text-align: center; }
+  .rank-num.gold { color: #BA7517; }
+  .rank-num.silver { color: #888; }
+  .rank-num.bronze { color: #915F3A; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+  .member-info { flex: 1; min-width: 0; }
+  .member-name { font-size: 14px; font-weight: 500; }
+  .member-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .status-badge { font-size: 12px; font-weight: 500; padding: 3px 10px;
+    border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+  .badge-done { background: var(--green-bg); color: var(--green-text); }
+  .badge-pending { background: var(--surface2); color: var(--text3); }
+  .char-count { font-size: 13px; font-weight: 600; color: var(--text2); }
+
+  /* 글 등록 폼 */
+  .member-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1rem; }
+  .member-btn { padding: 9px 6px; font-size: 13px; font-weight: 500;
+    border: 0.5px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text); cursor: pointer; text-align: center;
+    transition: all 0.15s; font-family: inherit; }
+  .member-btn:hover { background: var(--surface2); }
+  .member-btn.selected { border-color: var(--blue); background: var(--blue-bg); color: var(--blue-text); border-width: 1.5px; }
+  .form-label { font-size: 13px; color: var(--text2); margin-bottom: 6px; display: block; }
+  .textarea-wrap { position: relative; margin-bottom: 12px; }
+  textarea { width: 100%; min-height: 200px; padding: 12px; font-size: 14px; line-height: 1.7;
+    border: 0.5px solid var(--border2); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text); resize: vertical;
+    font-family: inherit; transition: border-color 0.15s; }
+  textarea:focus { outline: none; border-color: var(--blue); }
+  .char-indicator { display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--text2); margin-bottom: 12px; }
+  .char-progress { flex: 1; height: 3px; background: var(--surface2); border-radius: 2px;
+    margin: 0 10px; overflow: hidden; }
+  .char-bar { height: 100%; border-radius: 2px; transition: width 0.2s, background 0.2s; }
+  .submit-btn { width: 100%; padding: 12px; background: var(--blue); color: white;
+    border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; font-family: inherit; }
+  .submit-btn:hover:not(:disabled) { background: var(--blue-text); }
+  .submit-btn:disabled { background: var(--surface2); color: var(--text3); cursor: not-allowed; }
+  .error-msg { background: var(--red-bg); color: var(--red); font-size: 13px;
+    padding: 10px 14px; border-radius: var(--radius-sm); margin-bottom: 12px; border: 0.5px solid rgba(163,45,45,0.2); }
+  .success-msg { background: var(--green-bg); color: var(--green-text); font-size: 13px;
+    padding: 10px 14px; border-radius: var(--radius-sm); margin-bottom: 12px; }
+
+  /* 내역 */
+  .entry-card { background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 10px; }
+  .entry-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .entry-member { font-size: 14px; font-weight: 600; }
+  .entry-meta { font-size: 12px; color: var(--text2); }
+  .entry-content { font-size: 13px; color: var(--text2); line-height: 1.7;
+    max-height: 80px; overflow: hidden; position: relative; }
+  .entry-content::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+    height: 24px; background: linear-gradient(transparent, var(--surface)); }
+  .entry-chars { display: inline-block; font-size: 12px; font-weight: 500;
+    background: var(--blue-bg); color: var(--blue-text); padding: 2px 8px; border-radius: 20px; }
+
+  /* 관리 */
+  .manage-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .manage-input { flex: 1; padding: 9px 12px; font-size: 14px; border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-family: inherit; }
+  .manage-input:focus { outline: none; border-color: var(--blue); }
+  .add-btn { padding: 9px 16px; background: var(--blue); color: white; border: none;
+    border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; }
+  .manage-member-row { display: flex; align-items: center; padding: 9px 0;
+    border-bottom: 0.5px solid var(--border); }
+  .manage-member-row:last-child { border-bottom: none; }
+  .manage-name { flex: 1; font-size: 14px; }
+  .del-btn { font-size: 12px; color: var(--text3); border: 0.5px solid var(--border);
+    background: transparent; border-radius: var(--radius-sm); padding: 4px 10px;
+    cursor: pointer; font-family: inherit; }
+  .del-btn:hover { color: var(--red); border-color: var(--red); }
+  .setup-warning { background: var(--amber-bg); color: var(--amber); font-size: 13px;
+    padding: 12px 14px; border-radius: var(--radius-sm); margin-bottom: 14px;
+    border: 0.5px solid rgba(186,117,23,0.3); line-height: 1.6; }
+  .setup-warning a { color: var(--amber); font-weight: 600; }
+  .script-url-input { width: 100%; padding: 9px 12px; font-size: 13px; font-family: monospace;
+    border: 0.5px solid var(--border2); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text); }
+  .save-url-btn { margin-top: 8px; padding: 8px 16px; background: var(--blue); color: white;
+    border: none; border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; font-family: inherit; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 6px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty { text-align: center; padding: 2.5rem; color: var(--text3); font-size: 14px; }
+  .loading-row { text-align: center; padding: 1.5rem; color: var(--text3); font-size: 14px; }
+  .date-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .date-nav button { padding: 5px 12px; border: 0.5px solid var(--border2); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text); cursor: pointer; font-family: inherit; font-size: 13px; }
+  .date-nav input[type=date] { flex: 1; padding: 6px 10px; border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-family: inherit; font-size: 13px; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #1a1a18; color: white; padding: 11px 22px; border-radius: 24px;
+    font-size: 14px; opacity: 0; transition: opacity 0.25s; pointer-events: none;
+    z-index: 999; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+
+  /* 아바타 색상 */
+  .av-0 { background: #E6F1FB; color: #0C447C; }
+  .av-1 { background: #E1F5EE; color: #085041; }
+  .av-2 { background: #FAEEDA; color: #633806; }
+  .av-3 { background: #FBEAF0; color: #72243E; }
+  .av-4 { background: #EEEDFE; color: #3C3489; }
+  .av-5 { background: #FAECE7; color: #712B13; }
+  .av-6 { background: #EAF3DE; color: #27500A; }
+  .av-7 { background: #FCEBEB; color: #791F1F; }
+  .av-8 { background: #E1F5EE; color: #0F6E56; }
+  .av-9 { background: #FAEEDA; color: #854F0B; }
+  .av-10 { background: #EEEDFE; color: #534AB7; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="top-bar">
+    <h1>인증 시스템</h1>
+    <span class="date-badge" id="todayBadge"></span>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="setTab('board')">순위표</button>
+    <button class="tab" onclick="setTab('submit')">글 등록</button>
+    <button class="tab" onclick="setTab('history')">전체 내역</button>
+    <button class="tab" onclick="setTab('manage')">설정</button>
+  </div>
+  <div id="content"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── 상태 ──────────────────────────────────────────────────
+let GAS_URL = localStorage.getItem('gasUrl') || '';
+let currentTab = 'board';
+let members = [];
+let todayEntries = [];
+let historyEntries = [];
+let selectedMember = null;
+let writeContent = '';
+let submitting = false;
+let loadingBoard = false;
+let formError = '';
+let formSuccess = '';
+let historyDate = getTodayStr();
+
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function formatDate(str) {
+  if (!str) return '';
+  const [y,m,d] = str.split('-');
+  return `${y}년 ${m}월 ${d}일`;
+}
+function formatTime(ts) {
+  if (!ts) return '';
+  try { return new Date(ts).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}); }
+  catch { return ts.toString().slice(0,5); }
+}
+
+// ─── API 호출 ─────────────────────────────────────────────
+async function apiGet(params) {
+  if (!GAS_URL) throw new Error('Apps Script URL이 설정되지 않았습니다.');
+  const url = GAS_URL + '?' + new URLSearchParams(params);
+  const res = await fetch(url);
+  return res.json();
+}
+
+async function apiPost(body) {
+  if (!GAS_URL) throw new Error('Apps Script URL이 설정되지 않았습니다.');
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+// ─── 데이터 로드 ──────────────────────────────────────────
+async function loadMembers() {
+  if (!GAS_URL) return;
+  try {
+    const data = await apiGet({ action: 'getMembers' });
+    if (Array.isArray(data)) members = data;
+  } catch(e) { console.error(e); }
+}
+
+async function loadTodayEntries() {
+  if (!GAS_URL) return;
+  loadingBoard = true; render();
+  try {
+    const data = await apiGet({ action: 'getEntries', date: getTodayStr() });
+    if (Array.isArray(data)) todayEntries = data;
+  } catch(e) { console.error(e); }
+  loadingBoard = false; render();
+}
+
+async function loadHistory() {
+  if (!GAS_URL) return;
+  try {
+    const data = await apiGet({ action: 'getEntries', date: historyDate });
+    if (Array.isArray(data)) historyEntries = data;
+  } catch(e) { console.error(e); }
+  render();
+}
+
+// ─── 탭 ──────────────────────────────────────────────────
+async function setTab(tab) {
+  currentTab = tab;
+  formError = ''; formSuccess = '';
+  if (tab === 'board') await loadTodayEntries();
+  if (tab === 'history') await loadHistory();
+  if (tab === 'manage') await loadMembers();
+  render();
+}
+
+// ─── 글 제출 ─────────────────────────────────────────────
+async function submitEntry() {
+  formError = ''; formSuccess = '';
+  const content = writeContent.trim();
+  if (!selectedMember) { formError = '멤버를 선택해주세요.'; render(); return; }
+  if (content.length < 1000) { formError = '1000자 미만입니다.'; render(); return; }
+  submitting = true; render();
+  try {
+    const res = await apiPost({ member: selectedMember, content, date: getTodayStr() });
+    if (res.success) {
+      formSuccess = res.message || '등록되었습니다!';
+      writeContent = ''; selectedMember = null;
+      await loadTodayEntries();
+    } else {
+      formError = res.error || '오류가 발생했습니다.';
+    }
+  } catch(e) { formError = '서버 연결 오류: ' + e.message; }
+  submitting = false; render();
+}
+
+async function addMember() {
+  const input = document.getElementById('newMemberInput');
+  const name = input.value.trim();
+  if (!name) return;
+  const res = await apiGet({ action: 'addMember', name });
+  if (res.success) { input.value = ''; await loadMembers(); render(); showToast('멤버 추가 완료'); }
+  else { showToast(res.error || '오류'); }
+}
+
+async function removeMember(name) {
+  if (!confirm(`${name}을 삭제하시겠습니까?`)) return;
+  const res = await apiGet({ action: 'removeMember', name });
+  if (res.success) { await loadMembers(); render(); showToast('삭제 완료'); }
+}
+
+function saveGasUrl() {
+  const v = document.getElementById('gasUrlInput').value.trim();
+  if (!v) return;
+  GAS_URL = v;
+  localStorage.setItem('gasUrl', v);
+  showToast('저장되었습니다');
+  setTab('board');
+}
+
+// ─── 렌더 ─────────────────────────────────────────────────
+function render() {
+  document.getElementById('todayBadge').textContent = formatDate(getTodayStr());
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['board','submit','history','manage'][i] === currentTab);
+  });
+  const c = document.getElementById('content');
+  if (currentTab === 'board') c.innerHTML = renderBoard();
+  else if (currentTab === 'submit') c.innerHTML = renderSubmit();
+  else if (currentTab === 'history') c.innerHTML = renderHistory();
+  else c.innerHTML = renderManage();
+}
+
+function renderBoard() {
+  if (!GAS_URL) return noUrlWarning();
+  const submitted = members.filter(m => todayEntries.some(e => e.member === m));
+  const pending = members.filter(m => !todayEntries.some(e => e.member === m));
+  const rate = members.length ? Math.round(submitted.length / members.length * 100) : 0;
+
+  return `
+  <div class="summary-grid">
+    <div class="metric"><div class="metric-label">전체 멤버</div><div class="metric-value">${members.length}</div></div>
+    <div class="metric"><div class="metric-label">인증 완료</div><div class="metric-value" style="color:var(--green)">${submitted.length}</div></div>
+    <div class="metric"><div class="metric-label">달성률</div><div class="metric-value" style="color:var(--blue)">${rate}%</div></div>
+  </div>
+  ${loadingBoard ? '<div class="loading-row">불러오는 중...</div>' : ''}
+  <div class="card">
+    ${[...submitted, ...pending].map((m, i) => {
+      const entry = todayEntries.find(e => e.member === m);
+      const idx = members.indexOf(m) % 11;
+      const isDone = !!entry;
+      const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+      return `
+      <div class="member-row">
+        <span class="rank-num ${isDone ? rankClass : ''}">${isDone ? i+1 : '-'}</span>
+        <div class="avatar av-${idx}">${m.slice(0,1)}</div>
+        <div class="member-info">
+          <div class="member-name">${m}</div>
+          <div class="member-sub">${isDone ? entry.timestamp || '인증 완료' : '미인증'}</div>
+        </div>
+        ${isDone
+          ? `<span class="char-count">${(entry.charCount||'').toLocaleString()}자</span>
+             <span class="status-badge badge-done">완료</span>`
+          : `<span class="status-badge badge-pending">대기</span>`}
+      </div>`;
+    }).join('')}
+    ${members.length === 0 ? '<div class="empty">멤버가 없습니다.<br>설정 탭에서 멤버를 추가해주세요.</div>' : ''}
+  </div>
+  <button style="display:block;margin:0 auto;font-size:12px;color:var(--text2);background:transparent;border:none;cursor:pointer;padding:8px;" onclick="loadTodayEntries()">새로고침</button>`;
+}
+
+function renderSubmit() {
+  if (!GAS_URL) return noUrlWarning();
+  const len = writeContent.trim().length;
+  const pct = Math.min(len / 1000 * 100, 100);
+  const barColor = len >= 1000 ? 'var(--green)' : len >= 500 ? 'var(--amber)' : 'var(--blue)';
+  const alreadyDone = selectedMember && todayEntries.some(e => e.member === selectedMember);
+
+  return `
+  <div class="card">
+    <div class="card-title">멤버 선택</div>
+    <div class="member-grid">
+      ${members.map(m => {
+        const done = todayEntries.some(e => e.member === m);
+        return `<button class="member-btn ${selectedMember===m?'selected':''}" onclick="selectMember('${m}')"
+          style="${done ? 'opacity:0.5;' : ''}">${m}${done?' ✓':''}</button>`;
+      }).join('')}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">오늘의 글</div>
+    ${formError ? `<div class="error-msg">${formError}</div>` : ''}
+    ${formSuccess ? `<div class="success-msg">${formSuccess}</div>` : ''}
+    ${alreadyDone ? `<div class="success-msg">${selectedMember}님은 오늘 이미 등록하셨습니다.</div>` : ''}
+    <div class="textarea-wrap">
+      <textarea id="writeArea" placeholder="오늘의 글을 작성해주세요. (최소 1,000자 이상)"
+        oninput="writeContent=this.value;updateCharCount()"
+        ${submitting || alreadyDone ? 'disabled' : ''}>${writeContent}</textarea>
+    </div>
+    <div class="char-indicator">
+      <span id="charNum" style="font-weight:500;color:${len>=1000?'var(--green)':'var(--text2)'}">${len.toLocaleString()}자</span>
+      <div class="char-progress"><div class="char-bar" id="charBar" style="width:${pct}%;background:${barColor}"></div></div>
+      <span style="color:var(--text3)">최소 1,000자</span>
+    </div>
+    <button class="submit-btn" onclick="submitEntry()"
+      ${submitting || !selectedMember || len < 1000 || alreadyDone ? 'disabled' : ''}>
+      ${submitting ? '<span class="spinner"></span>등록 중...' : selectedMember ? `${selectedMember}님 글 등록` : '멤버를 먼저 선택하세요'}
+    </button>
+  </div>`;
+}
+
+function renderHistory() {
+  if (!GAS_URL) return noUrlWarning();
+  return `
+  <div class="date-nav">
+    <button onclick="changeHistoryDate(-1)">◀</button>
+    <input type="date" value="${historyDate}" onchange="historyDate=this.value;loadHistory()" />
+    <button onclick="changeHistoryDate(1)">▶</button>
+  </div>
+  ${historyEntries.length === 0
+    ? `<div class="empty">${formatDate(historyDate)}에 등록된 글이 없습니다.</div>`
+    : historyEntries.map(e => `
+    <div class="entry-card">
+      <div class="entry-header">
+        <span class="entry-member">${e.member}</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="entry-chars">${(e.charCount||'').toLocaleString()}자</span>
+          <span class="entry-meta">${e.timestamp||''}</span>
+        </div>
+      </div>
+      <div class="entry-content">${e.content||''}</div>
+    </div>`).join('')}`;
+}
+
+function renderManage() {
+  return `
+  <div class="card">
+    <div class="card-title">Apps Script URL 설정</div>
+    ${!GAS_URL ? `<div class="setup-warning">⚠️ Apps Script URL이 설정되지 않았습니다.<br>아래 README를 따라 배포 후 URL을 입력해주세요.</div>` : ''}
+    <label class="form-label">웹앱 URL</label>
+    <input class="script-url-input" id="gasUrlInput" type="text" value="${GAS_URL}"
+      placeholder="https://script.google.com/macros/s/.../exec" />
+    <button class="save-url-btn" onclick="saveGasUrl()">저장</button>
+  </div>
+  <div class="card">
+    <div class="card-title">멤버 관리</div>
+    <div class="manage-row">
+      <input class="manage-input" id="newMemberInput" placeholder="새 멤버 이름" />
+      <button class="add-btn" onclick="addMember()">추가</button>
+    </div>
+    ${members.length === 0 ? '<div class="empty">멤버가 없습니다.</div>' :
+      members.map(m => `
+      <div class="manage-member-row">
+        <span class="manage-name">${m}</span>
+        <button class="del-btn" onclick="removeMember('${m}')">삭제</button>
+      </div>`).join('')}
+  </div>`;
+}
+
+function noUrlWarning() {
+  return `<div class="setup-warning" style="margin-top:1rem;">
+    ⚠️ Apps Script URL이 설정되지 않았습니다.<br>
+    <strong>설정 탭</strong>에서 Google Apps Script 웹앱 URL을 입력해주세요.
+  </div>`;
+}
+
+// ─── 헬퍼 ────────────────────────────────────────────────
+function selectMember(m) { selectedMember = selectedMember === m ? null : m; render(); }
+function updateCharCount() {
+  const len = writeContent.trim().length;
+  const pct = Math.min(len/1000*100,100);
+  const color = len>=1000?'var(--green)':len>=500?'var(--amber)':'var(--blue)';
+  const el = document.getElementById('charNum');
+  const bar = document.getElementById('charBar');
+  if (el) { el.textContent = len.toLocaleString()+'자'; el.style.color = len>=1000?'var(--green)':'var(--text2)'; }
+  if (bar) { bar.style.width = pct+'%'; bar.style.background = color; }
+}
+function changeHistoryDate(delta) {
+  const d = new Date(historyDate); d.setDate(d.getDate()+delta);
+  historyDate = d.toISOString().slice(0,10);
+  loadHistory();
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ─── 초기화 ───────────────────────────────────────────────
+(async () => {
+  render();
+  if (GAS_URL) {
+    await Promise.all([loadMembers(), loadTodayEntries()]);
+    render();
+  }
+})();
+</script>
+</body>
+</html>
