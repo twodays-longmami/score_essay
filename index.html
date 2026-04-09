@@ -121,7 +121,7 @@ textarea:focus{outline:none;border-color:var(--blue);}
 <div class="toast" id="toast"></div>
 
 <script>
-var GAS_URL = localStorage.getItem('gasUrl') || '';
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbws7qy7SU_T6Osfsa2EeagQ-beHU4hoZkASQuOjq0s010Bk04DbL4TUEQmdyxYkI5ZJZQ/exec';
 var currentTab = 'board';
 var members = [];
 var todayEntries = [];
@@ -237,16 +237,32 @@ function submitEntry() {
 function addMember() {
   var input = document.getElementById('newMemberInput');
   var name = input.value.trim();
-  if (!name) return;
+  if (!name) { showToast('이름을 입력해주세요.'); return; }
   apiGet({action:'addMember', name:name}).then(function(res){
-    if (res.success) { input.value = ''; return loadMembers().then(render).then(function(){ showToast('멤버 추가 완료'); }); }
-    else showToast(res.error || '오류');
+    if (res.success) {
+      input.value = '';
+      showToast('멤버 추가 완료: ' + name);
+      loadMembers().then(function(){ render(); });
+    } else {
+      showToast(res.error || '추가 실패');
+    }
+  }).catch(function(e){
+    showToast('오류: ' + e.message);
+    console.error('addMember error:', e);
   });
 }
 function removeMember(name) {
   if (!confirm(name + '을(를) 삭제하시겠습니까?')) return;
   apiGet({action:'removeMember', name:name}).then(function(res){
-    if (res.success) { loadMembers().then(render); showToast('삭제 완료'); }
+    if (res.success) {
+      showToast('삭제 완료: ' + name);
+      loadMembers().then(function(){ render(); });
+    } else {
+      showToast(res.error || '삭제 실패');
+    }
+  }).catch(function(e){
+    showToast('오류: ' + e.message);
+    console.error('removeMember error:', e);
   });
 }
 function saveGasUrl() {
