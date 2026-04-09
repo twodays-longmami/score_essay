@@ -121,7 +121,7 @@ textarea:focus{outline:none;border-color:var(--blue);}
 <div class="toast" id="toast"></div>
 
 <script>
-var GAS_URL = localStorage.getItem('gasUrl') || 'https://script.google.com/macros/s/AKfycbyfaYPdOy1JsTVxcliF5slRXnQwc46PWVwzkkAL5hmtkUZxeAqP7250TMJWlNku4vrIFg/exec';
+var GAS_URL = localStorage.getItem('gasUrl') || '';
 var currentTab = 'board';
 var members = [];
 var todayEntries = [];
@@ -185,11 +185,11 @@ function loadCounts() {
 }
 function loadTodayEntries() {
   if (!GAS_URL) return Promise.resolve();
-  loadingBoard = true; render();
+  loadingBoard = true;
   return apiGet({action:'getEntries', date:getTodayStr()}).then(function(d){
     if (Array.isArray(d)) todayEntries = d;
-    loadingBoard = false; render();
-  }).catch(function(e){ console.error(e); loadingBoard = false; render(); });
+    loadingBoard = false;
+  }).catch(function(e){ console.error(e); loadingBoard = false; });
 }
 function loadHistory() {
   if (!GAS_URL) return Promise.resolve();
@@ -204,7 +204,9 @@ function setTab(tab) {
   currentTab = tab;
   formError = ''; formSuccess = '';
   render();
-  if (tab === 'board') loadTodayEntries();
+  if (tab === 'board') {
+    Promise.all([loadMembers(), loadTodayEntries(), loadCounts()]).then(render);
+  }
   if (tab === 'history') loadHistory();
   if (tab === 'manage') loadMembers().then(render);
 }
@@ -455,7 +457,10 @@ function noUrlWarning() {
 // 초기화
 render();
 if (GAS_URL) {
-  Promise.all([loadMembers(), loadTodayEntries(), loadCounts()]).then(render);
+  loadMembers().then(function(){
+    render();
+    return Promise.all([loadTodayEntries(), loadCounts()]);
+  }).then(render);
 }
 </script>
 </body>
