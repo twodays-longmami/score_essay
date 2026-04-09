@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -208,7 +209,7 @@
 
 <script>
 // ─── 상태 ──────────────────────────────────────────────────
-let GAS_URL = 'https://script.google.com/macros/s/AKfycbxgcuzaM9IuN38XP0LZ_6DLfg9eoWYir1cr7OB8n4O6CdHAzeSB0m5gViH_5mQTPBkv/exec';
+let GAS_URL = localStorage.getItem('gasUrl') || '';
 let currentTab = 'board';
 let members = [];
 let todayEntries = [];
@@ -393,6 +394,21 @@ function renderSubmit() {
   const pct = Math.min(len / 1000 * 100, 100);
   const barColor = len >= 1000 ? 'var(--green)' : len >= 500 ? 'var(--amber)' : 'var(--blue)';
   const alreadyDone = selectedMember && todayEntries.some(e => e.member === selectedMember);
+  const canSubmit = !submitting && selectedMember && len >= 1000 && !alreadyDone;
+
+  // 버튼 상태별 텍스트 & 스타일
+  let btnText = '멤버를 먼저 선택하세요';
+  let btnStyle = '';
+  if (submitting) {
+    btnText = '<span class="spinner"></span>등록 중...';
+  } else if (alreadyDone) {
+    btnText = `✓ ${selectedMember}님은 오늘 이미 등록하셨습니다`;
+    btnStyle = 'background:var(--green);color:white;opacity:1;cursor:default;';
+  } else if (selectedMember && len < 1000) {
+    btnText = `${1000 - len}자 더 작성하면 등록할 수 있어요`;
+  } else if (selectedMember && len >= 1000) {
+    btnText = `${selectedMember}님 글 등록`;
+  }
 
   return `
   <div class="card">
@@ -401,7 +417,7 @@ function renderSubmit() {
       ${members.map(m => {
         const done = todayEntries.some(e => e.member === m);
         return `<button class="member-btn ${selectedMember===m?'selected':''}" onclick="selectMember('${m}')"
-          style="${done ? 'opacity:0.5;' : ''}">${m}${done?' ✓':''}</button>`;
+          style="${done ? 'background:var(--green-bg);color:var(--green-text);border-color:var(--green);' : ''}">${m}${done?' ✓':''}</button>`;
       }).join('')}
     </div>
   </div>
@@ -409,20 +425,20 @@ function renderSubmit() {
     <div class="card-title">오늘의 글</div>
     ${formError ? `<div class="error-msg">${formError}</div>` : ''}
     ${formSuccess ? `<div class="success-msg">${formSuccess}</div>` : ''}
-    ${alreadyDone ? `<div class="success-msg">${selectedMember}님은 오늘 이미 등록하셨습니다.</div>` : ''}
     <div class="textarea-wrap">
       <textarea id="writeArea" placeholder="오늘의 글을 작성해주세요. (최소 1,000자 이상)"
         oninput="writeContent=this.value;updateCharCount()"
-        ${submitting || alreadyDone ? 'disabled' : ''}>${writeContent}</textarea>
+        ${submitting ? 'disabled' : ''}>${writeContent}</textarea>
     </div>
     <div class="char-indicator">
       <span id="charNum" style="font-weight:500;color:${len>=1000?'var(--green)':'var(--text2)'}">${len.toLocaleString()}자</span>
       <div class="char-progress"><div class="char-bar" id="charBar" style="width:${pct}%;background:${barColor}"></div></div>
       <span style="color:var(--text3)">최소 1,000자</span>
     </div>
-    <button class="submit-btn" onclick="submitEntry()"
-      ${submitting || !selectedMember || len < 1000 || alreadyDone ? 'disabled' : ''}>
-      ${submitting ? '<span class="spinner"></span>등록 중...' : selectedMember ? `${selectedMember}님 글 등록` : '멤버를 먼저 선택하세요'}
+    <button class="submit-btn" onclick="${alreadyDone ? '' : 'submitEntry()'}"
+      ${canSubmit ? '' : 'disabled'}
+      style="${btnStyle}">
+      ${btnText}
     </button>
   </div>`;
 }
