@@ -111,7 +111,7 @@ textarea:focus{outline:none;border-color:var(--blue);}
     <span class="date-badge" id="todayBadge"></span>
   </div>
   <div class="tabs">
-    <button class="tab" id="tab-board" onclick="setTab('board')">순위표</button>
+    <button class="tab" id="tab-board" onclick="setTab('board')">스코어</button>
     <button class="tab" id="tab-submit" onclick="setTab('submit')">글 등록</button>
     <button class="tab" id="tab-history" onclick="setTab('history')">전체 내역</button>
     <button class="tab" id="tab-manage" onclick="setTab('manage')">설정</button>
@@ -121,7 +121,7 @@ textarea:focus{outline:none;border-color:var(--blue);}
 <div class="toast" id="toast"></div>
 
 <script>
-var GAS_URL = localStorage.getItem('gasUrl') || '';
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbws7qy7SU_T6Osfsa2EeagQ-beHU4hoZkASQuOjq0s010Bk04DbL4TUEQmdyxYkI5ZJZQ/exec';
 var currentTab = 'board';
 var members = [];
 var todayEntries = [];
@@ -130,6 +130,7 @@ var selectedMember = null;
 var writeContent = '';
 var submitting = false;
 var loadingBoard = false;
+var allCounts = {};
 var formError = '';
 var formSuccess = '';
 var historyDate = getTodayStr();
@@ -176,6 +177,12 @@ function loadMembers() {
     if (Array.isArray(d)) members = d;
   }).catch(function(e){ console.error(e); });
 }
+function loadCounts() {
+  if (!GAS_URL) return Promise.resolve();
+  return apiGet({action:'getCounts'}).then(function(d){
+    if (d && typeof d === 'object' && !Array.isArray(d)) allCounts = d;
+  }).catch(function(e){ console.error(e); });
+}
 function loadTodayEntries() {
   if (!GAS_URL) return Promise.resolve();
   loadingBoard = true; render();
@@ -213,11 +220,12 @@ function submitEntry() {
     if (res.success) {
       formSuccess = res.message || '등록되었습니다!';
       writeContent = ''; selectedMember = null;
-      return loadTodayEntries();
+      submitting = false;
+      return Promise.all([loadTodayEntries(), loadCounts()]);
     } else {
       formError = res.error || '오류가 발생했습니다.';
+      submitting = false; render();
     }
-    submitting = false; render();
   }).catch(function(e){
     formError = '서버 연결 오류: ' + e.message;
     submitting = false; render();
@@ -309,34 +317,45 @@ function render() {
 function renderBoard() {
   if (!GAS_URL) return noUrlWarning();
   var submitted = members.filter(function(m){ return todayEntries.some(function(e){ return e.member===m; }); });
-  var pending = members.filter(function(m){ return !todayEntries.some(function(e){ return e.member===m; }); });
   var rate = members.length ? Math.round(submitted.length/members.length*100) : 0;
-  var list = submitted.concat(pending);
-  var rows = list.map(function(m, i){
+  var totalAll = Object.values(allCounts).reduce(function(s,v){ return s+v; }, 0);
+
+  // 누적 건수 기준 내림차순 정렬
+  var sorted = members.slice().sort(function(a,b){
+    return (allCounts[b]||0) - (allCounts[a]||0);
+  });
+
+  var rows = sorted.map(function(m, i){
     var entry = todayEntries.find(function(e){ return e.member===m; });
     var idx = members.indexOf(m) % 11;
     var isDone = !!entry;
-    var rankClass = isDone ? (i===0?'gold':i===1?'silver':i===2?'bronze':'') : '';
+    var total = allCounts[m] || 0;
+    var rankClass = i===0?'gold':i===1?'silver':i===2?'bronze':'';
     return '<div class="member-row">'
-      + '<span class="rank-num '+rankClass+'">'+(isDone?i+1:'-')+'</span>'
+      + '<span class="rank-num '+rankClass+'">'+(i+1)+'</span>'
       + '<div class="avatar av-'+idx+'">'+m.slice(0,1)+'</div>'
       + '<div class="member-info">'
       + '<div class="member-name">'+m+'</div>'
-      + '<div class="member-sub">'+(isDone?(entry.timestamp||'인증 완료'):'미인증')+'</div>'
+      + '<div class="member-sub" style="display:flex;gap:6px;align-items:center;">'
+      + '<span style="font-size:13px;font-weight:600;color:var(--blue)">'+total+'건</span>'
+      + '<span style="color:var(--text3)">|</span>'
+      + '<span>'+(isDone?'오늘 완료':'오늘 미인증')+'</span>'
+      + '</div>'
       + '</div>'
       + (isDone
-        ? '<span class="char-count">'+((entry.charCount||0)).toLocaleString()+'자</span><span class="status-badge badge-done">완료</span>'
+        ? '<span class="status-badge badge-done">완료</span>'
         : '<span class="status-badge badge-pending">대기</span>')
       + '</div>';
   }).join('');
+
   return '<div class="summary-grid">'
     + '<div class="metric"><div class="metric-label">전체 멤버</div><div class="metric-value">'+members.length+'</div></div>'
-    + '<div class="metric"><div class="metric-label">인증 완료</div><div class="metric-value" style="color:var(--green)">'+submitted.length+'</div></div>'
-    + '<div class="metric"><div class="metric-label">달성률</div><div class="metric-value" style="color:var(--blue)">'+rate+'%</div></div>'
+    + '<div class="metric"><div class="metric-label">오늘 인증</div><div class="metric-value" style="color:var(--green)">'+submitted.length+'</div></div>'
+    + '<div class="metric"><div class="metric-label">누적 총 건수</div><div class="metric-value" style="color:var(--blue)">'+totalAll+'</div></div>'
     + '</div>'
     + (loadingBoard ? '<div class="loading-row">불러오는 중...</div>' : '')
     + '<div class="card">'+(members.length===0?'<div class="empty">멤버가 없습니다.</div>':rows)+'</div>'
-    + '<button style="display:block;margin:0 auto;font-size:12px;color:var(--text2);background:transparent;border:none;cursor:pointer;padding:8px;" onclick="loadTodayEntries()">새로고침</button>';
+    + '<button style="display:block;margin:0 auto;font-size:12px;color:var(--text2);background:transparent;border:none;cursor:pointer;padding:8px;" onclick="Promise.all([loadTodayEntries(),loadCounts()])">새로고침</button>';
 }
 
 function renderSubmit() {
@@ -436,7 +455,7 @@ function noUrlWarning() {
 // 초기화
 render();
 if (GAS_URL) {
-  Promise.all([loadMembers(), loadTodayEntries()]).then(render);
+  Promise.all([loadMembers(), loadTodayEntries(), loadCounts()]).then(render);
 }
 </script>
 </body>
